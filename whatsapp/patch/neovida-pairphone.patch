@@ -1,0 +1,165 @@
+diff --git a/whatsapp-bridge/main.go b/whatsapp-bridge/main.go
+index bfba094..7494104 100644
+--- a/whatsapp-bridge/main.go
++++ b/whatsapp-bridge/main.go
+@@ -3185,14 +3185,41 @@ func main() {
+ 				continue
+ 			}
+ 
+-			// Print QR codes for pairing with the phone.
++			// Print QR codes for pairing with the phone. NEOVIDA: every rotated
++			// QR payload also goes to store/qr.txt, and with --pair-phone an
++			// 8-character pairing code is requested once and written to
++			// store/pair-code.txt (see pairphone.go).
++			pairPhone, pairErr := resolvePairPhone()
++			if pairErr != nil {
++				logger.Errorf("Invalid --pair-phone / WHATSAPP_PAIR_PHONE: %v", pairErr)
++				return
++			}
++			pairCodeRequested := false
+ 			switch renderPairingQRCodes(qrChan, os.Stdout, func(code string, w io.Writer) {
++				writePairingArtifact("store", "qr.txt", code)
++				if pairPhone != "" && !pairCodeRequested {
++					pairCodeRequested = true
++					pc, err := client.PairPhone(ctx, pairPhone, true, whatsmeow.PairClientChrome, "Chrome (Linux)")
++					if err != nil {
++						logger.Errorf("Pairing code request failed for %s: %v (falling back to QR)", pairPhone, err)
++					} else {
++						fmt.Fprintf(w, "\nPairing code for +%s: %s\n", pairPhone, pc)
++						fmt.Fprintln(w, "On the phone: WhatsApp > Linked Devices > Link a Device > Link with phone number instead")
++						writePairingArtifact("store", "pair-code.txt", pc)
++					}
++				}
+ 				qrterminal.GenerateHalfBlock(code, qrterminal.L, w)
+ 			}) {
+ 			case pairingQRSucceeded:
++				_ = os.Remove("store/qr.txt")
++				_ = os.Remove("store/pair-code.txt")
+ 				connected <- true
+ 			case pairingQRTimedOut:
+ 				logger.Warnf("QR code timed out")
++				_ = os.Remove("store/qr.txt")
++				_ = os.Remove("store/pair-code.txt")
++				// WhatsApp already closed the login socket: retry right away.
++				cancel()
+ 			case pairingQRChannelClosed:
+ 			}
+ 
+diff --git a/whatsapp-bridge/pairphone.go b/whatsapp-bridge/pairphone.go
+new file mode 100644
+index 0000000..2c63135
+--- /dev/null
++++ b/whatsapp-bridge/pairphone.go
+@@ -0,0 +1,72 @@
++package main
++
++import (
++	"errors"
++	"flag"
++	"os"
++	"path/filepath"
++	"regexp"
++	"strings"
++)
++
++// Pairing by phone number (8-character code) instead of scanning a QR code.
++//
++// WhatsApp lets a companion device link via "Link with phone number instead":
++// the primary phone types an 8-character code shown by the companion. This is
++// far more convenient than scanning a QR from a headless server, and the code
++// can be relayed to the account owner as plain text.
++//
++// The phone number is taken from --pair-phone or WHATSAPP_PAIR_PHONE, in
++// international format without leading zeros (e.g. 79173701184). Formatting
++// characters (+, spaces, dashes, parentheses) are tolerated and stripped.
++
++var pairPhoneFlag = flag.String("pair-phone", "",
++	"Pair using an 8-character code instead of a QR: phone number in international format (digits only, no leading 0). Also WHATSAPP_PAIR_PHONE. Only used on a fresh pair.")
++
++var pairPhoneNotDigits = regexp.MustCompile(`\D+`)
++
++var (
++	errPairPhoneEmpty    = errors.New("pair phone is empty")
++	errPairPhoneShort    = errors.New("pair phone is too short: use international format with country code")
++	errPairPhoneLeading0 = errors.New("pair phone must not start with 0: use international format with country code")
++)
++
++// normalizePairPhone strips formatting and validates the number the same way
++// whatsmeow PairPhone does (plus a slightly stricter minimum length).
++func normalizePairPhone(raw string) (string, error) {
++	digits := pairPhoneNotDigits.ReplaceAllString(strings.TrimSpace(raw), "")
++	if digits == "" {
++		return "", errPairPhoneEmpty
++	}
++	if strings.HasPrefix(digits, "0") {
++		return "", errPairPhoneLeading0
++	}
++	if len(digits) < 8 {
++		return "", errPairPhoneShort
++	}
++	return digits, nil
++}
++
++// resolvePairPhone returns the normalized pair phone from the flag or env, or
++// "" when code pairing is not requested.
++func resolvePairPhone() (string, error) {
++	raw := strings.TrimSpace(*pairPhoneFlag)
++	if raw == "" {
++		raw = strings.TrimSpace(os.Getenv("WHATSAPP_PAIR_PHONE"))
++	}
++	if raw == "" {
++		return "", nil
++	}
++	return normalizePairPhone(raw)
++}
++
++// writePairingArtifact stores the latest QR payload or pairing code in the
++// store directory (owner-only), so an operator can render it elsewhere
++// (e.g. as a PNG on another machine, or relay the code as text).
++func writePairingArtifact(storeDir, name, content string) {
++	if storeDir == "" {
++		return
++	}
++	path := filepath.Join(storeDir, name)
++	_ = os.WriteFile(path, []byte(content+"\n"), 0o600)
++}
+diff --git a/whatsapp-bridge/pairphone_test.go b/whatsapp-bridge/pairphone_test.go
+new file mode 100644
+index 0000000..553107c
+--- /dev/null
++++ b/whatsapp-bridge/pairphone_test.go
+@@ -0,0 +1,34 @@
++package main
++
++import "testing"
++
++func TestNormalizePairPhone(t *testing.T) {
++	cases := []struct {
++		in      string
++		want    string
++		wantErr bool
++	}{
++		{"+7 917 370-11-84", "79173701184", false},
++		{"79173701184", "79173701184", false},
++		{"+1 (415) 555-0100", "14155550100", false},
++		{"0123456", "", true}, // leading zero: not international format
++		{"12345", "", true},   // too short
++		{"", "", true},
++	}
++	for _, c := range cases {
++		got, err := normalizePairPhone(c.in)
++		if c.wantErr {
++			if err == nil {
++				t.Errorf("normalizePairPhone(%q) = %q, want error", c.in, got)
++			}
++			continue
++		}
++		if err != nil {
++			t.Errorf("normalizePairPhone(%q) unexpected error: %v", c.in, err)
++			continue
++		}
++		if got != c.want {
++			t.Errorf("normalizePairPhone(%q) = %q, want %q", c.in, got, c.want)
++		}
++	}
++}
