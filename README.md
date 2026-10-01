@@ -16,7 +16,7 @@
 
 - **MAX**: отсканировать QR телефоном (Настройки → Устройства → Подключить устройство).
 - **WhatsApp**: включить VPN на компьютере и отсканировать QR (Настройки → Связанные устройства).
-- **Telegram**: получить свои ключи на my.telegram.org и один раз ввести код из Telegram в терминале.
+- **Telegram**: прислать агенту в чат два кода, которые придут в само приложение Telegram. Ключи на my.telegram.org агент получает сам.
 
 Займёт 10–15 минут. Работает на macOS и Windows.
 
@@ -26,7 +26,8 @@
 - `whatsapp/wa_mcp.py`: запуск моста [verygoodplugins/whatsapp-mcp](https://github.com/verygoodplugins/whatsapp-mcp) v0.7.0
   и его MCP-сервера. Готовые сборки моста под Mac и Windows лежат в релизе, наш патч (вход кодом по номеру,
   QR в файл) в `whatsapp/patch/`.
-- Telegram ставится из открытого плагина [bchewy/telegram-agent-plugin](https://github.com/bchewy/codex-telegram-plugin).
+- Telegram ставится из открытого плагина [bchewy/telegram-agent-plugin](https://github.com/bchewy/codex-telegram-plugin),
+  а `telegram/tg_setup.py` от NEOVIDA сам получает ключи на my.telegram.org и входит в аккаунт: от ученика только коды.
 
 ## Правила
 

@@ -2,9 +2,10 @@
 
 Ты агент (Claude Code или Codex) на компьютере ученика курса NEOVIDA. Твоя задача: подключить личные
 Telegram, WhatsApp и MAX ученика как MCP-серверы, чтобы он мог читать и искать переписку прямо из чата с тобой.
-Делай всё сам, по шагам, коротко сообщая ученику, что происходит. Ученик не программист: не проси его
-запускать команды, если можешь запустить сам. Исключение одно: вход в Telegram (нужен код из Telegram
-и, возможно, облачный пароль), его ученик вводит сам в своём терминале.
+Делай всё сам, по шагам, коротко сообщая ученику, что происходит. Ученик не программист: терминал он не открывает,
+файлы не раскладывает, на сайтах ничего не заполняет. От него нужно только то, что физически не сделаешь ты:
+отсканировать два QR-кода (MAX и WhatsApp), прислать тебе в чат два кода, которые Telegram пришлёт в само
+приложение Telegram, и ввести облачный пароль Telegram в окошке на экране, если он включён.
 
 Схема та же, что у Альберта Валеева, только всё живёт на компьютере ученика, без сервера:
 
@@ -62,21 +63,31 @@ Telegram, WhatsApp и MAX ученика как MCP-серверы, чтобы �
 4. Успех: `Готово: WhatsApp привязан`. Мост остаётся работать в фоне, история подтянется с телефона
    за несколько минут. После перезагрузки компьютера мост поднимется сам при первом обращении Claude.
 
-## Шаг 3. Telegram
+## Шаг 3. Telegram (ученик только присылает два кода)
 
 1. Скачай архив плагина и распакуй в `~/.neovida-messengers/telegram-plugin`:
    `https://github.com/bchewy/codex-telegram-plugin/archive/ad8d98370a13a35c213e6f221ef7a74a1ea123d8.zip`
    (внутри одна папка `telegram-agent-plugin-ad8d983...`, её содержимое и есть плагин).
 2. Прогрей: `uv sync --project ~/.neovida-messengers/telegram-plugin/telegram/mcp_server`.
-3. Ученику нужны свои ключи приложения Telegram. Объясни коротко:
-   «Зайди на https://my.telegram.org, войди по номеру, открой API development tools, создай приложение
-   (название любое, например MyClaude, платформа Desktop). Там будут api_id и api_hash.»
-4. Вход ученик делает сам в терминале (нужен код из Telegram). Дай ему ОДНУ готовую команду с абсолютными путями:
-   `"<uv>" run --project "<домашняя папка>/.neovida-messengers/telegram-plugin/telegram/mcp_server" codex-telegram login`
-   Команда спросит api_id, api_hash, номер телефона, код из Telegram и облачный пароль, если он включён.
-   Как открыть терминал: macOS `Cmd+Пробел → Терминал`, Windows `Пуск → PowerShell`.
-5. Проверь сам: `... codex-telegram whoami` должен показать аккаунт ученика.
-   Сессия хранится в системной связке ключей (Keychain на Mac, Диспетчер учётных данных на Windows).
+3. Скачай помощник `telegram/tg_setup.py` в `~/.neovida-messengers/tg_setup.py`.
+   Дальше `TG` это команда (абсолютные пути):
+   `"<uv>" run --project "<home>/.neovida-messengers/telegram-plugin/telegram/mcp_server" python "<home>/.neovida-messengers/tg_setup.py"`
+4. Спроси у ученика номер телефона, на котором его Telegram.
+5. Ключи приложения (api_id и api_hash) получаешь ты, ученик на сайт не заходит:
+   - `TG keys-send --phone <номер>`. Скажи ученику: «В Telegram пришло сообщение от Telegram с кодом. Пришли мне этот код сюда в чат».
+   - `TG keys-finish --code <код>`. Помощник сам входит на my.telegram.org, создаёт приложение и сохраняет ключи.
+   - Если создать приложение не вышло (ERROR): попроси ученика на минуту выключить VPN и повтори обе команды. Не больше трёх раз подряд.
+6. Вход в аккаунт:
+   - `TG login-send`. Скажи: «Пришёл второй код, уже для входа. Пришли его сюда».
+   - `TG login-finish --code <код>`. Если у ученика включён облачный пароль, на его экране откроется окошко
+     «Облачный пароль Telegram»: попроси ввести пароль там. В чат пароль не писать и тебе не диктовать.
+7. Проверь: `"<uv>" run --project "<home>/.neovida-messengers/telegram-plugin/telegram/mcp_server" codex-telegram whoami`
+   показывает аккаунт ученика. Сессия хранится в системной связке ключей (Keychain на Mac, Диспетчер учётных данных на Windows).
+
+Правила с кодами: коды никуда не пересылай и в ответах не печатай. Предупреди ученика один раз: код из Telegram
+нельзя пересылать другим людям в самом Telegram, иначе Telegram заблокирует вход. Прислать его тебе в чат можно.
+Если окошко пароля не открылось, запусти `TG login-finish --code <тот же код>` ещё раз; второй вариант: ученик
+один раз запускает в терминале `codex-telegram login` с теми же api_id и api_hash (они в `~/.neovida-messengers/telegram/api.json`).
 
 ## Шаг 4. Прописать MCP
 
@@ -93,11 +104,14 @@ claude mcp add --scope user telegram -- "<uv>" run --project "<home>/.neovida-me
 
 Если ученик пользуется ещё и приложением Claude (обычный чат, не Code), добавь те же три сервера в
 `claude_desktop_config.json`: macOS `~/Library/Application Support/Claude/`, Windows `%APPDATA%\Claude\`.
-Если ученик работает в Codex, добавь их в `~/.codex/config.toml` секциями `[mcp_servers.<имя>]`.
+Если ученик работает в Codex, пропиши их в `~/.codex/config.toml` секциями `[mcp_servers.telegram]`,
+`[mcp_servers.whatsapp]`, `[mcp_servers.max]`, каждому `startup_timeout_sec = 60`. На Windows пути в config.toml пиши
+в одинарных кавычках. Команду `claude mcp add` и файл `~/.claude.json` в Codex не используй.
 
 ## Шаг 5. Правило отправки
 
-Допиши в глобальный `~/.claude/CLAUDE.md` ученика (создай, если нет):
+Claude Code: допиши в глобальный `~/.claude/CLAUDE.md` ученика (создай, если нет). Codex: допиши разделом
+в `AGENTS.md` в корне рабочей папки ученика. Текст правила:
 
 ```
 ## Мессенджеры (Telegram, WhatsApp, MAX)
@@ -108,7 +122,8 @@ claude mcp add --scope user telegram -- "<uv>" run --project "<home>/.neovida-me
 
 ## Шаг 6. Проверка
 
-1. Попроси ученика перезапустить Claude (MCP-серверы подхватываются только при старте сессии).
+1. Попроси ученика полностью перезапустить приложение (Mac: Cmd + Q; Windows: выйти через значок у часов) и открыть снова:
+   MCP-серверы подхватываются только при старте.
 2. В новой сессии проверь каждый: «покажи 5 последних чатов в MAX / WhatsApp / Telegram».
    Для MAX сначала `max_status`, у WhatsApp `list_chats`, у Telegram `get_me` и `list_dialogs`.
 3. Отчитайся ученику коротко: что подключено, что нет и почему.
@@ -122,7 +137,8 @@ claude mcp add --scope user telegram -- "<uv>" run --project "<home>/.neovida-me
 | WhatsApp: пустые чаты сразу после входа | история идёт с телефона, подождать 5 минут, телефон держать онлайн |
 | WhatsApp: мост не поднялся | включить VPN, `wa_mcp.py status`, лог `~/.neovida-messengers/whatsapp/bridge.log` |
 | WhatsApp: «Device logged out» | удалить папку `~/.neovida-messengers/whatsapp/store` и пройти вход заново |
-| Telegram: `no current user` | повторить `codex-telegram login` в терминале ученика |
+| Telegram: `no current user` | повторить шаг 3, пункты 5–6 (`TG login-send` и `TG login-finish`) |
+| Telegram: «Код не подошёл» | код живёт несколько минут: `TG login-send` заново и свежий код |
 | Инструментов нет в Claude | перезапустить Claude; проверить абсолютный путь к uv в конфиге |
 
 Честно предупреди ученика один раз: WhatsApp и MAX подключаются через неофициальные клиенты. Для чтения
