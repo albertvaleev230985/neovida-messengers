@@ -5,12 +5,12 @@
 #     "qrcode[pil]>=7.4",
 # ]
 # ///
-"""WhatsApp для Claude Code: мост whatsmeow + MCP, всё на компьютере ученика.
+"""WhatsApp для Codex: мост whatsmeow + MCP, всё на компьютере ученика.
 
 Та же схема, что у Альберта на сервере Гермеса (verygoodplugins/whatsapp-mcp v0.7.0
 плюс наш патч «вход по коду вместо QR»), только локально:
 - `uv run --script wa_mcp.py login [--phone 79991234567]`  привязка к телефону
-- `uv run --script wa_mcp.py serve`   MCP по stdio; его запускает Claude Code,
+- `uv run --script wa_mcp.py serve`   MCP по stdio; его запускает Codex,
   он же сам поднимает мост в фоне, если тот не запущен
 - `uv run --script wa_mcp.py status`  проверка
 - `uv run --script wa_mcp.py stop`    остановить мост
@@ -111,7 +111,7 @@ def spawn_bridge(phone: str | None = None) -> int:
     STORE.mkdir(parents=True, exist_ok=True)
     env = os.environ | {
         "WHATSAPP_BRIDGE_PORT": str(PORT),
-        "WHATSAPP_DEVICE_NAME": "Claude Code (NEOVIDA)",
+        "WHATSAPP_DEVICE_NAME": "Codex (NEOVIDA)",
         "WEBHOOK_ENABLED": "false",
         "WHATSAPP_MEDIA_ROOTS": str(HOME / "outbox"),
     }
@@ -155,7 +155,7 @@ def show_qr_page(code: str, pair_code: str | None):
     page = HOME / "login.html"
     page.write_text(
         "<html><head><meta charset='utf-8'><meta http-equiv='refresh' content='5'>"
-        "<title>WhatsApp → Claude</title></head><body style='font-family:sans-serif;text-align:center'>"
+        "<title>WhatsApp → Codex</title></head><body style='font-family:sans-serif;text-align:center'>"
         "<h2>Отсканируйте QR в WhatsApp на телефоне</h2>"
         "<p>WhatsApp → Настройки → Связанные устройства → Привязка устройства</p>"
         f"<img src='login-qr.png?{int(time.time())}' width='360'>{extra}"
@@ -233,7 +233,7 @@ def serve():
 
 
 def main():
-    p = argparse.ArgumentParser(description="WhatsApp для Claude Code (NEOVIDA)")
+    p = argparse.ArgumentParser(description="WhatsApp для Codex (NEOVIDA)")
     p.add_argument("command", choices=["serve", "login", "status", "stop"])
     p.add_argument("--phone", help="номер для входа кодом, только цифры: 79991234567")
     a = p.parse_args()

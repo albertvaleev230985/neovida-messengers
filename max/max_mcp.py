@@ -6,14 +6,14 @@
 #     "qrcode[pil]>=7.4",
 # ]
 # ///
-"""MAX для Claude Code: личный аккаунт MAX как MCP-сервер.
+"""MAX для Codex: личный аккаунт MAX как MCP-сервер.
 
 Сделан по схеме моста Альберта (сервер Гермеса), но всё живёт на компьютере ученика:
 - `uv run --script max_mcp.py login`  вход по QR с телефона, сессия в ~/.neovida-messengers/max
-- `uv run --script max_mcp.py serve`  MCP по stdio, его запускает Claude Code
+- `uv run --script max_mcp.py serve`  MCP по stdio, его запускает Codex
 - `uv run --script max_mcp.py status` проверка, есть ли сохранённый вход
 
-Пока Claude Code открыт, сервер держит соединение с MAX, пишет новые сообщения
+Пока Codex открыт, сервер держит соединение с MAX, пишет новые сообщения
 в локальную SQLite и подтягивает историю свежих чатов. Сервер НИКОГДА не
 начинает вход сам: если сессия слетела, он честно говорит «запусти login».
 Повторные попытки входа MAX не любит (блокирует SMS и может забанить).
@@ -363,7 +363,7 @@ def build_server():
 
 
 def main():
-    p = argparse.ArgumentParser(description="MAX для Claude Code (NEOVIDA)")
+    p = argparse.ArgumentParser(description="MAX для Codex (NEOVIDA)")
     p.add_argument("command", choices=["serve", "login", "status"])
     a = p.parse_args()
     for stream in (sys.stdout, sys.stderr):
