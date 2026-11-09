@@ -1,7 +1,7 @@
-# Telegram, WhatsApp и MAX в Codex
+# Telegram и WhatsApp в Codex
 
 Подключаем личные мессенджеры к Codex, чтобы спрашивать агента:
-«что мне писали в WhatsApp за сегодня», «найди в MAX, где договаривались про оплату»,
+«что мне писали в WhatsApp за сегодня», «найди, где договаривались про оплату»,
 «перескажи рабочий чат в Telegram», «подготовь ответ клиенту».
 
 ## Как подключить
@@ -9,21 +9,20 @@
 Открой Codex и вставь одну фразу:
 
 ```
-Подключи мне Telegram, WhatsApp и MAX по инструкции https://raw.githubusercontent.com/albertvaleev230985/neovida-messengers/main/SETUP.md
+Подключи мне Telegram и WhatsApp по инструкции https://raw.githubusercontent.com/albertvaleev230985/neovida-messengers/main/SETUP.md
 ```
 
-Дальше Codex всё сделает сам. От тебя понадобится:
+Дальше Codex всё сделает сам. Оба мессенджера подключаются через VPN: в учебном зале NEOVIDA его даёт Wi-Fi,
+дома включи свой. От тебя понадобится:
 
-- **MAX**: без VPN, нужен российский адрес. В учебном зале NEOVIDA и с VPN NEOVIDA ничего не переключаете: российские сайты там идут напрямую. Отсканировать QR телефоном (Настройки → Устройства → Подключить устройство).
-- **WhatsApp**: через VPN, отсканировать QR (Настройки → Связанные устройства).
-- **Telegram**: через VPN, прислать агенту в чат два кода, которые придут в само приложение Telegram. Ключи на my.telegram.org агент получает сам.
+- **WhatsApp**: отсканировать QR (Настройки → Связанные устройства).
+- **Telegram**: прислать агенту в чат два кода, которые придут в само приложение Telegram. Ключи на my.telegram.org агент получает сам.
 - В конце полностью закрыть Codex и открыть снова.
 
 Займёт 10–15 минут. Работает на macOS и Windows.
 
 ## Что внутри
 
-- `max/max_mcp.py`: коннектор MAX от NEOVIDA (на библиотеке PyMax), вход по QR.
 - `whatsapp/wa_mcp.py`: запуск моста [verygoodplugins/whatsapp-mcp](https://github.com/verygoodplugins/whatsapp-mcp) v0.7.0
   и его MCP-сервера. Готовые сборки моста под Mac и Windows лежат в релизе, наш патч (вход кодом по номеру,
   QR в файл) в `whatsapp/patch/`.
